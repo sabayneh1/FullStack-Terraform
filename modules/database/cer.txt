@@ -1,0 +1,8 @@
+openssl genrsa -out myprivatekey.pem 2048
+
+# Generate a self-signed certificate with a placeholder domain using double quotes
+openssl req -new -x509 -sha256 -key myprivatekey.pem -out mycertificate.pem -days 3650 -subj "//CN=local.test"
+
+
+aws acm import-certificate --certificate fileb://mycertificate.pem \
+                           --private-key fileb://myprivatekey.pem

@@ -1,0 +1,1992 @@
+# This file is maintained automatically by "terraform init".
+# Manual edits may be lost in future updates.
+
+provider "registry.terraform.io/hashicorp/aws" {
+  version = "5.46.0"
+  hashes = [
+    "h1:t2QzxmqmIE5ZhEzmYqiB/i9tUarkx7yXohCQGCwimwY=",
+    "zh:05ae6180a7f23071435f6e5e59c19af0b6c5da42ee600c6c1568c8660214d548",
+    "zh:0d878d1565d5e57ce6b34ec5f04b28662044a50c999ec5770c374aa1f1020de2",
+    "zh:25ef1467af2514d8011c44759307445f7057836ff87dfe4503c3e1c9776d5c1a",
+    "zh:26c006df6200f0063b827aab05bec94f9f3f77848e82ed72e48a51d1170d1961",
+    "zh:37cdf4292649a10f12858622826925e18ad4eca354c31f61d02c66895eb91274",
+    "zh:4315b0433c2fc512666c74e989e2d95240934ef370bea1c690d36cb02d30c4ce",
+    "zh:75df0b3f631b78aeff1832cc77d99b527c2a5e79d40f7aac40bdc4a66124dac2",
+    "zh:90693d936c9a556d2bf945de4920ff82052002eb73139bd7164fafd02920f0ef",
+    "zh:9b12af85486a96aedd8d7984b0ff811a4b42e3d88dad1a3fb4c0b580d04fa425",
+    "zh:c9177ad09804c60fd2ed25950570407b6bdcdf0fcc309e1673b584f06a827fae",
+    "zh:ca8e8db24a4d62d92afd8d3d383b81a08693acac191a2e0a110fb46deeff56a3",
+    "zh:d5fa3a36e13957d63bfe9bbd6df0426a2422214403aac9f20b60c36f8d9ebec6",
+    "zh:e4ede44a112296c9cc77b15e439e41ee15c0e8b3a0dec94ae34df5ebba840e8b",
+    "zh:f2d4de8d8cde69caffede1544ebea74e69fcc4552e1b79ae053519a05c060706",
+    "zh:fc19e9266b1841d4a3aeefa8a5b5ad6988baed6540f85a373b6c2d0dc1ca5830",
+  ]
+}
+
+
+module "networking" {
+  source              = "./modules/networking"
+  cidr_block          = "10.0.0.0/16"
+  public_subnet_cidrs = ["10.0.8.0/24", "10.0.9.0/24"]
+  private_subnet_cidrs = ["10.0.11.0/24", "10.0.12.0/24"]
+  azs                 = ["ca-central-1a", "ca-central-1b"]
+}
+
+module "compute" {
+  source      = "./modules/compute"
+  subnets     = module.networking.public_subnets_ids
+  image_id    = "ami-0f168a624c65f5699"
+  instance_type = "t2.micro"
+  min_size    = 1
+  max_size    = 3
+  key_name    = "pro1"
+  vpc_id = module.networking.vpc_id
+  target_group_arn = module.web_load_balancer.target_group_arns
+  depends_on = [ module.networking, module.database ]
+}
+
+module "database" {
+  source          = "./modules/database"
+  db_instance_type = "db.t2.micro"
+  db_name        = "mydb"
+  db_user        = "admin"
+  db_password    = "strongpassword123"
+  subnet_ids     = module.networking.private_subnets_ids
+  vpc_id = module.networking.vpc_id
+  depends_on = [ module.networking ]
+}
+
+
+module "web_load_balancer" {
+  source          = "./modules/aws-load-balancer"
+  name            = "three-tier-web-lb"
+  internal        = false
+  subnets         = module.networking.public_subnets_ids
+  security_groups = [module.compute.web_security_group_id]
+  vpc_id          = module.networking.vpc_id
+  web_instance_id = module.compute.instance_id
+  depends_on      = [module.networking]
+}
+
+-----BEGIN CERTIFICATE-----
+MIIDCzCCAfOgAwIBAgIUXNoaO2HhcoeESI+Gr5LX+f9/9nMwDQYJKoZIhvcNAQEL
+BQAwFTETMBEGA1UEAwwKbG9jYWwudGVzdDAeFw0yNDA0MjIxNzI1NDFaFw0zNDA0
+MjAxNzI1NDFaMBUxEzARBgNVBAMMCmxvY2FsLnRlc3QwggEiMA0GCSqGSIb3DQEB
+AQUAA4IBDwAwggEKAoIBAQDYoCQFzo0YzGnzOq+oQFgs8yLJuDmKAtcaXEG60eyG
+/Pr8wKipu5l1J9Otwa/e/afXVvi6vHQwMv789iUkdtof1V22jSczOBmvRt8yQKmT
+akKIQZRUebam5QzIKam+0FdibAIOH1Eaq7xa8A2VPuXQmv/qpllw2K6BpDYyc2Gu
+Vgl6UBT+vUlSEzq8BJjWFyisMfJX2vvwO3eF7z1UwIzbQecHuqleOixor17WK5Gk
+q1K8LlNGtjHDkYLwBqITYkHIm4ztI2WquDeBnRtmfH31D/K36b/rwkSbkInAsxKQ
+9c3wAepG6u/A7xolusQF0ksCLxnTtoEGxFmg5COWluD/AgMBAAGjUzBRMB0GA1Ud
+DgQWBBRjU2n6WjrBmgiax5YrcwsuvJ7YkDAfBgNVHSMEGDAWgBRjU2n6WjrBmgia
+x5YrcwsuvJ7YkDAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAf
+WjYz/Cc3mxqZZdL6e3SM/CZa946JildkM+L3ZroLsKhd5en6dOFNl9YMZ3oavnaT
+1tS8U4z3SX4EGqvkmQpfoeMlwG9EKB6PNi1xRUjFTUTWB3LPzTuh5Ak1VDhgZbnr
+1PuQONKYmb66EjFRChuiLdXbwAJ58JAma4bZobBdZWQ0F8kQ+G9jX8zscnR3wrWS
+BxeCKzi9BNGUCPwB27adeLBj5PXxvSkqHxuGQkK4iXwH1oCqLaGCe2IRGvO8kzIC
+h2p9DLVlAF42K67b4Eut9yapFKfoYwBdRXikB2auNeVLnKijMfpPz3HMm9wblET0
+DZrBmpZ8KcJPNgs9iQj+
+-----END CERTIFICATE-----
+
+-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDYoCQFzo0YzGnz
+Oq+oQFgs8yLJuDmKAtcaXEG60eyG/Pr8wKipu5l1J9Otwa/e/afXVvi6vHQwMv78
+9iUkdtof1V22jSczOBmvRt8yQKmTakKIQZRUebam5QzIKam+0FdibAIOH1Eaq7xa
+8A2VPuXQmv/qpllw2K6BpDYyc2GuVgl6UBT+vUlSEzq8BJjWFyisMfJX2vvwO3eF
+7z1UwIzbQecHuqleOixor17WK5Gkq1K8LlNGtjHDkYLwBqITYkHIm4ztI2WquDeB
+nRtmfH31D/K36b/rwkSbkInAsxKQ9c3wAepG6u/A7xolusQF0ksCLxnTtoEGxFmg
+5COWluD/AgMBAAECggEALC++KVEQhtZrZim6Wt+FHOYbWnoxgm1B4yaeYbUgQgio
+SZYi0Txq+PK+wtqXPS0QZ2ReJ/j42jwMtxyeRunXZFbpXqs8K75tvsr+DAoUjPVH
+zPNThketci2Whd25uipVKMZPRQIuUPpm2UXN/3ts9Tgoq3xzEgmgzuDoDTJr4lta
+RdzzgUihTioLggNub1Pf7REhrz6HGoGMPzE+QMmU9iGtPX/ssb+kla9tNtrnF7GH
+ZUaXGGtD1HBUsWYHhSp7TTxZqHZIH8j+VOGeB2AJvxy5+V2wqqkbe8U459lF6fTe
+dMUQKZw8SYEnQ7q/xHsoPLxp211K2ANO/qne0LRqAQKBgQDy1IsIuT5CLgJbK5rp
+SXnyIGwe0x82Mqcxgcu+t26mJ7fRdU5UdiLrCdrXd/mu5E1qflFBzb87rSYrTBCa
+QGDxIQrJrNhIaDT0tgHCTzaQY4o7XGsEVJ6Jrl1k5mBi/H3uxdcZ/4to2uCQAxRb
+7forQH6gz+Y/PMKvdNEtz8hloQKBgQDkX8V7OSkvdL0xcwS3nbp9J2fIyYRYVbIr
+9SxGqDNNz8EsG78EwAWrSLE8o3CVpCpy6XztVf1Qe3PmZC1RmzOOZnYgdXSe58vC
+6aKlXchvMX5+tZWFWav2RoC6R9IKD2+XSCCbmlMBMmZ2bpl4gB5ab1S7WwBliWQK
+CeS9zwSCnwKBgEpkz0uW5PoFendP/p+mARQq1rUC3TcPgaVrLG57aAzDck9bbun1
+X3E+jasheH8aNpV/qYlNbV7tBxqQrS10t75n7xQmPgTA2Ch4ckWDWyYVOM5C3A5x
+ljh8EOTOp4zr6fDy75lpbt5q4A1+xAf9+nyxv5mo19Nb3BFA6qzsUWrBAoGALnNU
+ZZXgzKg/+xjb8sUAM4iaUXq7koQLs2kw0kZP+Rmyvtf96GduP8KPWjgcJDO59pmL
+MXL2DTKvBkOF/D1HJUWt7Tg2ukOHbGO9E0maBRPaGMeyW+c7VOJOOJV3IVi2Z9zh
+1QR0sZ+gu6IPUTUt91MBtwHxeLWTRX9xqTG8Rx0CgYEAryI8X54v5YuVCECKy+Aw
+nqPruc78lXTy6UXez+nd6krR+ZzDiQ8x/NXdwBRooTgpPXgGFwgs3wJ5wI9jjA3x
+0orvWUjdIdpFla2YO1BkFLyFM/3kksUu6aNrhaIw3tzChs24kDQOzwVfzQASYxT2
+vUsptHGrFFo2YK3YefIl7UI=
+-----END PRIVATE KEY-----
+
+output "web_application_url" {
+  value       = module.web_load_balancer.lb_dns_name
+  description = "URL to access the web application."
+}
+
+{
+  "version": 4,
+  "terraform_version": "1.7.3",
+  "serial": 141,
+  "lineage": "0b9de918-9e77-6246-75e1-a1368d897b0d",
+  "outputs": {
+    "web_application_url": {
+      "value": "three-tier-web-lb-1116437073.ca-central-1.elb.amazonaws.com",
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "module": "module.compute",
+      "mode": "managed",
+      "type": "aws_autoscaling_group",
+      "name": "web",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:autoscaling:ca-central-1:247867391235:autoScalingGroup:293c168f-c61c-435b-a6fa-7b96e83c933f:autoScalingGroupName/terraform-20240422173547359300000007",
+            "availability_zones": [
+              "ca-central-1a",
+              "ca-central-1b"
+            ],
+            "capacity_rebalance": false,
+            "context": "",
+            "default_cooldown": 300,
+            "default_instance_warmup": 0,
+            "desired_capacity": 1,
+            "desired_capacity_type": "",
+            "enabled_metrics": null,
+            "force_delete": false,
+            "force_delete_warm_pool": false,
+            "health_check_grace_period": 300,
+            "health_check_type": "EC2",
+            "id": "terraform-20240422173547359300000007",
+            "ignore_failed_scaling_activities": false,
+            "initial_lifecycle_hook": [],
+            "instance_maintenance_policy": [],
+            "instance_refresh": [],
+            "launch_configuration": "web-server-20240422173546829700000006",
+            "launch_template": [],
+            "load_balancers": [],
+            "max_instance_lifetime": 0,
+            "max_size": 3,
+            "metrics_granularity": "1Minute",
+            "min_elb_capacity": null,
+            "min_size": 1,
+            "mixed_instances_policy": [],
+            "name": "terraform-20240422173547359300000007",
+            "name_prefix": "terraform-",
+            "placement_group": "",
+            "predicted_capacity": 0,
+            "protect_from_scale_in": false,
+            "service_linked_role_arn": "arn:aws:iam::247867391235:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
+            "suspended_processes": null,
+            "tag": [
+              {
+                "key": "Name",
+                "propagate_at_launch": true,
+                "value": "web-instance"
+              }
+            ],
+            "target_group_arns": [
+              "arn:aws:elasticloadbalancing:ca-central-1:247867391235:targetgroup/web-targets/31b0378098da9ff7"
+            ],
+            "termination_policies": null,
+            "timeouts": null,
+            "traffic_source": [
+              {
+                "identifier": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:targetgroup/web-targets/31b0378098da9ff7",
+                "type": "elbv2"
+              }
+            ],
+            "vpc_zone_identifier": [
+              "subnet-03d59b9370d4ef5b3",
+              "subnet-052f5d98fa4a73c6e"
+            ],
+            "wait_for_capacity_timeout": "10m",
+            "wait_for_elb_capacity": null,
+            "warm_pool": [],
+            "warm_pool_size": 0
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjo2MDAwMDAwMDAwMDAsInVwZGF0ZSI6NjAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "module.compute.aws_launch_configuration.web_server",
+            "module.compute.aws_security_group.web",
+            "module.database.aws_db_instance.default",
+            "module.database.aws_db_subnet_group.default",
+            "module.database.aws_security_group.db",
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_route_table_association.private",
+            "module.networking.aws_route_table_association.public",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main",
+            "module.web_load_balancer.aws_lb_target_group.web"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.compute",
+      "mode": "managed",
+      "type": "aws_launch_configuration",
+      "name": "web_server",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:autoscaling:ca-central-1:247867391235:launchConfiguration:e17cc920-3bb7-4be1-9e1f-654b3b0ffba1:launchConfigurationName/web-server-20240422173546829700000006",
+            "associate_public_ip_address": false,
+            "ebs_block_device": [],
+            "ebs_optimized": false,
+            "enable_monitoring": true,
+            "ephemeral_block_device": [],
+            "iam_instance_profile": "",
+            "id": "web-server-20240422173546829700000006",
+            "image_id": "ami-0f168a624c65f5699",
+            "instance_type": "t2.micro",
+            "key_name": "pro1",
+            "metadata_options": [],
+            "name": "web-server-20240422173546829700000006",
+            "name_prefix": "web-server-",
+            "placement_tenancy": "",
+            "root_block_device": [],
+            "security_groups": [
+              "sg-0e052bdd0330b6e27"
+            ],
+            "spot_price": "",
+            "user_data": "8d368efb9ceb08a65647e4d325e97b450585aae9",
+            "user_data_base64": null
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.compute.aws_security_group.web",
+            "module.database.aws_db_instance.default",
+            "module.database.aws_db_subnet_group.default",
+            "module.database.aws_security_group.db",
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_route_table_association.private",
+            "module.networking.aws_route_table_association.public",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.compute",
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "web",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ca-central-1:247867391235:security-group/sg-0e052bdd0330b6e27",
+            "description": "Security group for web tier allowing HTTP and SSH",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-0e052bdd0330b6e27",
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "HTTP",
+                "from_port": 80,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 80
+              },
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "HTTPS",
+                "from_port": 443,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 443
+              },
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "SSH",
+                "from_port": 22,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 22
+              }
+            ],
+            "name": "web-sg",
+            "name_prefix": "",
+            "owner_id": "247867391235",
+            "revoke_rules_on_delete": false,
+            "tags": null,
+            "tags_all": {},
+            "timeouts": null,
+            "vpc_id": "vpc-07cff81271235a573"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "module.database.aws_db_instance.default",
+            "module.database.aws_db_subnet_group.default",
+            "module.database.aws_security_group.db",
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_route_table_association.private",
+            "module.networking.aws_route_table_association.public",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.database",
+      "mode": "managed",
+      "type": "aws_db_instance",
+      "name": "default",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 2,
+          "attributes": {
+            "address": "terraform-20240422173150048900000005.cbm66cuqeddm.ca-central-1.rds.amazonaws.com",
+            "allocated_storage": 20,
+            "allow_major_version_upgrade": null,
+            "apply_immediately": false,
+            "arn": "arn:aws:rds:ca-central-1:247867391235:db:terraform-20240422173150048900000005",
+            "auto_minor_version_upgrade": true,
+            "availability_zone": "ca-central-1b",
+            "backup_retention_period": 0,
+            "backup_target": "region",
+            "backup_window": "08:03-08:33",
+            "blue_green_update": [],
+            "ca_cert_identifier": "rds-ca-rsa2048-g1",
+            "character_set_name": "",
+            "copy_tags_to_snapshot": false,
+            "custom_iam_instance_profile": "",
+            "customer_owned_ip_enabled": false,
+            "db_name": "",
+            "db_subnet_group_name": "my-db-subnet-group",
+            "delete_automated_backups": true,
+            "deletion_protection": false,
+            "domain": "",
+            "domain_auth_secret_arn": "",
+            "domain_dns_ips": null,
+            "domain_fqdn": "",
+            "domain_iam_role_name": "",
+            "domain_ou": "",
+            "enabled_cloudwatch_logs_exports": null,
+            "endpoint": "terraform-20240422173150048900000005.cbm66cuqeddm.ca-central-1.rds.amazonaws.com:3306",
+            "engine": "mysql",
+            "engine_version": "8.0.36",
+            "engine_version_actual": "8.0.36",
+            "final_snapshot_identifier": null,
+            "hosted_zone_id": "Z1JG78A3UK1DU3",
+            "iam_database_authentication_enabled": false,
+            "id": "db-H6764SCRRKCS4UJVG2FABG5OHM",
+            "identifier": "terraform-20240422173150048900000005",
+            "identifier_prefix": "terraform-",
+            "instance_class": "db.m6g.large",
+            "iops": 0,
+            "kms_key_id": "",
+            "latest_restorable_time": "",
+            "license_model": "general-public-license",
+            "listener_endpoint": [],
+            "maintenance_window": "mon:06:04-mon:06:34",
+            "manage_master_user_password": null,
+            "master_user_secret": [],
+            "master_user_secret_kms_key_id": null,
+            "max_allocated_storage": 0,
+            "monitoring_interval": 0,
+            "monitoring_role_arn": "",
+            "multi_az": false,
+            "nchar_character_set_name": "",
+            "network_type": "IPV4",
+            "option_group_name": "default:mysql-8-0",
+            "parameter_group_name": "default.mysql8.0",
+            "password": "strongpassword123",
+            "performance_insights_enabled": false,
+            "performance_insights_kms_key_id": "",
+            "performance_insights_retention_period": 0,
+            "port": 3306,
+            "publicly_accessible": false,
+            "replica_mode": "",
+            "replicas": [],
+            "replicate_source_db": "",
+            "resource_id": "db-H6764SCRRKCS4UJVG2FABG5OHM",
+            "restore_to_point_in_time": [],
+            "s3_import": [],
+            "skip_final_snapshot": true,
+            "snapshot_identifier": null,
+            "status": "available",
+            "storage_encrypted": false,
+            "storage_throughput": 0,
+            "storage_type": "gp2",
+            "tags": {
+              "Name": "MyDBInstance"
+            },
+            "tags_all": {
+              "Name": "MyDBInstance"
+            },
+            "timeouts": null,
+            "timezone": "",
+            "username": "admin",
+            "vpc_security_group_ids": [
+              "sg-036c52d171898f700"
+            ]
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoyNDAwMDAwMDAwMDAwLCJkZWxldGUiOjM2MDAwMDAwMDAwMDAsInVwZGF0ZSI6NDgwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMiJ9",
+          "dependencies": [
+            "module.database.aws_db_subnet_group.default",
+            "module.database.aws_security_group.db",
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_route_table_association.private",
+            "module.networking.aws_route_table_association.public",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.database",
+      "mode": "managed",
+      "type": "aws_db_subnet_group",
+      "name": "default",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:rds:ca-central-1:247867391235:subgrp:my-db-subnet-group",
+            "description": "Managed by Terraform",
+            "id": "my-db-subnet-group",
+            "name": "my-db-subnet-group",
+            "name_prefix": "",
+            "subnet_ids": [
+              "subnet-00197b6b574bae2b4",
+              "subnet-0ab082f2dbe9fc368"
+            ],
+            "supported_network_types": [
+              "IPV4"
+            ],
+            "tags": {
+              "Name": "My DB subnet group"
+            },
+            "tags_all": {
+              "Name": "My DB subnet group"
+            },
+            "vpc_id": "vpc-07cff81271235a573"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_route_table_association.private",
+            "module.networking.aws_route_table_association.public",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.database",
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "db",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ca-central-1:247867391235:security-group/sg-036c52d171898f700",
+            "description": "Managed by Terraform",
+            "egress": [],
+            "id": "sg-036c52d171898f700",
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "10.0.0.0/16"
+                ],
+                "description": "",
+                "from_port": 3306,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 3306
+              }
+            ],
+            "name": "terraform-20240422173148234300000004",
+            "name_prefix": "terraform-",
+            "owner_id": "247867391235",
+            "revoke_rules_on_delete": false,
+            "tags": null,
+            "tags_all": {},
+            "timeouts": null,
+            "vpc_id": "vpc-07cff81271235a573"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_route_table_association.private",
+            "module.networking.aws_route_table_association.public",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.networking",
+      "mode": "managed",
+      "type": "aws_eip",
+      "name": "nat",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "address": null,
+            "allocation_id": "eipalloc-0b1ec3c82537ee562",
+            "associate_with_private_ip": null,
+            "association_id": "",
+            "carrier_ip": "",
+            "customer_owned_ip": "",
+            "customer_owned_ipv4_pool": "",
+            "domain": "vpc",
+            "id": "eipalloc-0b1ec3c82537ee562",
+            "instance": "",
+            "network_border_group": "ca-central-1",
+            "network_interface": "",
+            "private_dns": null,
+            "private_ip": "",
+            "ptr_record": "",
+            "public_dns": "ec2-15-156-33-39.ca-central-1.compute.amazonaws.com",
+            "public_ip": "15.156.33.39",
+            "public_ipv4_pool": "amazon",
+            "tags": null,
+            "tags_all": {},
+            "timeouts": null,
+            "vpc": true
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxODAwMDAwMDAwMDAsInJlYWQiOjkwMDAwMDAwMDAwMCwidXBkYXRlIjozMDAwMDAwMDAwMDB9fQ==",
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.networking",
+      "mode": "managed",
+      "type": "aws_internet_gateway",
+      "name": "igw",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:ca-central-1:247867391235:internet-gateway/igw-0f5884c7ad67d365b",
+            "id": "igw-0f5884c7ad67d365b",
+            "owner_id": "247867391235",
+            "tags": {
+              "Name": "Main Internet Gateway"
+            },
+            "tags_all": {
+              "Name": "Main Internet Gateway"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-07cff81271235a573"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.networking",
+      "mode": "managed",
+      "type": "aws_nat_gateway",
+      "name": "nat",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "allocation_id": "eipalloc-0b1ec3c82537ee562",
+            "association_id": "eipassoc-0e0db570fe3a31a2a",
+            "connectivity_type": "public",
+            "id": "nat-0ed8ff165e09198dd",
+            "network_interface_id": "eni-032c13434fd9bebb7",
+            "private_ip": "10.0.8.206",
+            "public_ip": "15.156.33.39",
+            "secondary_allocation_ids": null,
+            "secondary_private_ip_address_count": 0,
+            "secondary_private_ip_addresses": [],
+            "subnet_id": "subnet-03d59b9370d4ef5b3",
+            "tags": {
+              "Name": "Main NAT Gateway"
+            },
+            "tags_all": {
+              "Name": "Main NAT Gateway"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTgwMDAwMDAwMDAwMCwidXBkYXRlIjo2MDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.networking",
+      "mode": "managed",
+      "type": "aws_route_table",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:ca-central-1:247867391235:route-table/rtb-0199b7da0fe4c3175",
+            "id": "rtb-0199b7da0fe4c3175",
+            "owner_id": "247867391235",
+            "propagating_vgws": [],
+            "route": [
+              {
+                "carrier_gateway_id": "",
+                "cidr_block": "0.0.0.0/0",
+                "core_network_arn": "",
+                "destination_prefix_list_id": "",
+                "egress_only_gateway_id": "",
+                "gateway_id": "",
+                "ipv6_cidr_block": "",
+                "local_gateway_id": "",
+                "nat_gateway_id": "nat-0ed8ff165e09198dd",
+                "network_interface_id": "",
+                "transit_gateway_id": "",
+                "vpc_endpoint_id": "",
+                "vpc_peering_connection_id": ""
+              }
+            ],
+            "tags": {
+              "Name": "Private Route Table"
+            },
+            "tags_all": {
+              "Name": "Private Route Table"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-07cff81271235a573"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.networking",
+      "mode": "managed",
+      "type": "aws_route_table",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:ca-central-1:247867391235:route-table/rtb-02a4d1fbf1c914901",
+            "id": "rtb-02a4d1fbf1c914901",
+            "owner_id": "247867391235",
+            "propagating_vgws": [],
+            "route": [
+              {
+                "carrier_gateway_id": "",
+                "cidr_block": "0.0.0.0/0",
+                "core_network_arn": "",
+                "destination_prefix_list_id": "",
+                "egress_only_gateway_id": "",
+                "gateway_id": "igw-0f5884c7ad67d365b",
+                "ipv6_cidr_block": "",
+                "local_gateway_id": "",
+                "nat_gateway_id": "",
+                "network_interface_id": "",
+                "transit_gateway_id": "",
+                "vpc_endpoint_id": "",
+                "vpc_peering_connection_id": ""
+              }
+            ],
+            "tags": {
+              "Name": "Public Route Table"
+            },
+            "tags_all": {
+              "Name": "Public Route Table"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-07cff81271235a573"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.networking",
+      "mode": "managed",
+      "type": "aws_route_table_association",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0bd0ec2e56075d672",
+            "route_table_id": "rtb-0199b7da0fe4c3175",
+            "subnet_id": "subnet-00197b6b574bae2b4",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0bcefccc2b8766d2d",
+            "route_table_id": "rtb-0199b7da0fe4c3175",
+            "subnet_id": "subnet-0ab082f2dbe9fc368",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.networking",
+      "mode": "managed",
+      "type": "aws_route_table_association",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0e95dcd72e86dce9d",
+            "route_table_id": "rtb-02a4d1fbf1c914901",
+            "subnet_id": "subnet-03d59b9370d4ef5b3",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-09ac35e4477702dd2",
+            "route_table_id": "rtb-02a4d1fbf1c914901",
+            "subnet_id": "subnet-052f5d98fa4a73c6e",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.networking",
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ca-central-1:247867391235:subnet/subnet-00197b6b574bae2b4",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "ca-central-1a",
+            "availability_zone_id": "cac1-az1",
+            "cidr_block": "10.0.11.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-00197b6b574bae2b4",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": "",
+            "owner_id": "247867391235",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "Private-0"
+            },
+            "tags_all": {
+              "Name": "Private-0"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-07cff81271235a573"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        },
+        {
+          "index_key": 1,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ca-central-1:247867391235:subnet/subnet-0ab082f2dbe9fc368",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "ca-central-1b",
+            "availability_zone_id": "cac1-az2",
+            "cidr_block": "10.0.12.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-0ab082f2dbe9fc368",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": "",
+            "owner_id": "247867391235",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "Private-1"
+            },
+            "tags_all": {
+              "Name": "Private-1"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-07cff81271235a573"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.networking",
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ca-central-1:247867391235:subnet/subnet-03d59b9370d4ef5b3",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "ca-central-1a",
+            "availability_zone_id": "cac1-az1",
+            "cidr_block": "10.0.8.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-03d59b9370d4ef5b3",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": true,
+            "outpost_arn": "",
+            "owner_id": "247867391235",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "Public-0"
+            },
+            "tags_all": {
+              "Name": "Public-0"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-07cff81271235a573"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        },
+        {
+          "index_key": 1,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ca-central-1:247867391235:subnet/subnet-052f5d98fa4a73c6e",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "ca-central-1b",
+            "availability_zone_id": "cac1-az2",
+            "cidr_block": "10.0.9.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-052f5d98fa4a73c6e",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": true,
+            "outpost_arn": "",
+            "owner_id": "247867391235",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "Public-1"
+            },
+            "tags_all": {
+              "Name": "Public-1"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-07cff81271235a573"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "module.networking.aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.networking",
+      "mode": "managed",
+      "type": "aws_vpc",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ca-central-1:247867391235:vpc/vpc-07cff81271235a573",
+            "assign_generated_ipv6_cidr_block": false,
+            "cidr_block": "10.0.0.0/16",
+            "default_network_acl_id": "acl-0ee1fb2ddfad180eb",
+            "default_route_table_id": "rtb-0f8a077bcf16f6938",
+            "default_security_group_id": "sg-04d3e94668ea578f0",
+            "dhcp_options_id": "dopt-1c251774",
+            "enable_dns_hostnames": false,
+            "enable_dns_support": true,
+            "enable_network_address_usage_metrics": false,
+            "id": "vpc-07cff81271235a573",
+            "instance_tenancy": "default",
+            "ipv4_ipam_pool_id": null,
+            "ipv4_netmask_length": null,
+            "ipv6_association_id": "",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_network_border_group": "",
+            "ipv6_ipam_pool_id": "",
+            "ipv6_netmask_length": 0,
+            "main_route_table_id": "rtb-0f8a077bcf16f6938",
+            "owner_id": "247867391235",
+            "tags": {
+              "Name": "Main VPC"
+            },
+            "tags_all": {
+              "Name": "Main VPC"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "module": "module.web_load_balancer",
+      "mode": "managed",
+      "type": "aws_lb",
+      "name": "this",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "access_logs": [
+              {
+                "bucket": "",
+                "enabled": false,
+                "prefix": ""
+              }
+            ],
+            "arn": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:loadbalancer/app/three-tier-web-lb/caab934c79808ccd",
+            "arn_suffix": "app/three-tier-web-lb/caab934c79808ccd",
+            "client_keep_alive": 3600,
+            "connection_logs": [
+              {
+                "bucket": "",
+                "enabled": false,
+                "prefix": ""
+              }
+            ],
+            "customer_owned_ipv4_pool": "",
+            "desync_mitigation_mode": "defensive",
+            "dns_name": "three-tier-web-lb-1116437073.ca-central-1.elb.amazonaws.com",
+            "dns_record_client_routing_policy": null,
+            "drop_invalid_header_fields": false,
+            "enable_cross_zone_load_balancing": true,
+            "enable_deletion_protection": false,
+            "enable_http2": true,
+            "enable_tls_version_and_cipher_suite_headers": false,
+            "enable_waf_fail_open": false,
+            "enable_xff_client_port": false,
+            "enforce_security_group_inbound_rules_on_private_link_traffic": "",
+            "id": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:loadbalancer/app/three-tier-web-lb/caab934c79808ccd",
+            "idle_timeout": 60,
+            "internal": false,
+            "ip_address_type": "ipv4",
+            "load_balancer_type": "application",
+            "name": "three-tier-web-lb",
+            "name_prefix": "",
+            "preserve_host_header": false,
+            "security_groups": [
+              "sg-0e052bdd0330b6e27"
+            ],
+            "subnet_mapping": [
+              {
+                "allocation_id": "",
+                "ipv6_address": "",
+                "outpost_id": "",
+                "private_ipv4_address": "",
+                "subnet_id": "subnet-03d59b9370d4ef5b3"
+              },
+              {
+                "allocation_id": "",
+                "ipv6_address": "",
+                "outpost_id": "",
+                "private_ipv4_address": "",
+                "subnet_id": "subnet-052f5d98fa4a73c6e"
+              }
+            ],
+            "subnets": [
+              "subnet-03d59b9370d4ef5b3",
+              "subnet-052f5d98fa4a73c6e"
+            ],
+            "tags": {
+              "Name": "three-tier-web-lb"
+            },
+            "tags_all": {
+              "Name": "three-tier-web-lb"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-07cff81271235a573",
+            "xff_header_processing_mode": "append",
+            "zone_id": "ZQSVJUPU6J1EY"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6NjAwMDAwMDAwMDAwLCJ1cGRhdGUiOjYwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.compute.aws_security_group.web",
+            "module.database.aws_db_instance.default",
+            "module.database.aws_db_subnet_group.default",
+            "module.database.aws_security_group.db",
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_route_table_association.private",
+            "module.networking.aws_route_table_association.public",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.web_load_balancer",
+      "mode": "managed",
+      "type": "aws_lb_listener",
+      "name": "http_listener",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "alpn_policy": null,
+            "arn": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:listener/app/three-tier-web-lb/caab934c79808ccd/5361c5880eb900bd",
+            "certificate_arn": null,
+            "default_action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "order": 1,
+                "redirect": [],
+                "target_group_arn": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:targetgroup/web-targets/31b0378098da9ff7",
+                "type": "forward"
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:listener/app/three-tier-web-lb/caab934c79808ccd/5361c5880eb900bd",
+            "load_balancer_arn": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:loadbalancer/app/three-tier-web-lb/caab934c79808ccd",
+            "mutual_authentication": [],
+            "port": 80,
+            "protocol": "HTTP",
+            "ssl_policy": "",
+            "tags": null,
+            "tags_all": {},
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsInVwZGF0ZSI6MzAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "module.compute.aws_security_group.web",
+            "module.database.aws_db_instance.default",
+            "module.database.aws_db_subnet_group.default",
+            "module.database.aws_security_group.db",
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_route_table_association.private",
+            "module.networking.aws_route_table_association.public",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main",
+            "module.web_load_balancer.aws_lb.this",
+            "module.web_load_balancer.aws_lb_target_group.web"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.web_load_balancer",
+      "mode": "managed",
+      "type": "aws_lb_listener",
+      "name": "https_listener",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "alpn_policy": null,
+            "arn": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:listener/app/three-tier-web-lb/caab934c79808ccd/c3fc7f5f09537bf7",
+            "certificate_arn": "arn:aws:acm:ca-central-1:247867391235:certificate/556383a0-575d-41a4-a0b8-d2a38f5b8108",
+            "default_action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "order": 1,
+                "redirect": [],
+                "target_group_arn": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:targetgroup/web-targets/31b0378098da9ff7",
+                "type": "forward"
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:listener/app/three-tier-web-lb/caab934c79808ccd/c3fc7f5f09537bf7",
+            "load_balancer_arn": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:loadbalancer/app/three-tier-web-lb/caab934c79808ccd",
+            "mutual_authentication": [
+              {
+                "ignore_client_certificate_expiry": false,
+                "mode": "off",
+                "trust_store_arn": ""
+              }
+            ],
+            "port": 443,
+            "protocol": "HTTPS",
+            "ssl_policy": "ELBSecurityPolicy-2016-08",
+            "tags": null,
+            "tags_all": {},
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsInVwZGF0ZSI6MzAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "module.compute.aws_security_group.web",
+            "module.database.aws_db_instance.default",
+            "module.database.aws_db_subnet_group.default",
+            "module.database.aws_security_group.db",
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_route_table_association.private",
+            "module.networking.aws_route_table_association.public",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main",
+            "module.web_load_balancer.aws_lb.this",
+            "module.web_load_balancer.aws_lb_target_group.web"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.web_load_balancer",
+      "mode": "managed",
+      "type": "aws_lb_target_group",
+      "name": "web",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:targetgroup/web-targets/31b0378098da9ff7",
+            "arn_suffix": "targetgroup/web-targets/31b0378098da9ff7",
+            "connection_termination": null,
+            "deregistration_delay": "300",
+            "health_check": [
+              {
+                "enabled": true,
+                "healthy_threshold": 3,
+                "interval": 30,
+                "matcher": "200",
+                "path": "/",
+                "port": "traffic-port",
+                "protocol": "HTTP",
+                "timeout": 5,
+                "unhealthy_threshold": 3
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:ca-central-1:247867391235:targetgroup/web-targets/31b0378098da9ff7",
+            "ip_address_type": "ipv4",
+            "lambda_multi_value_headers_enabled": false,
+            "load_balancer_arns": [],
+            "load_balancing_algorithm_type": "round_robin",
+            "load_balancing_anomaly_mitigation": "off",
+            "load_balancing_cross_zone_enabled": "use_load_balancer_configuration",
+            "name": "web-targets",
+            "name_prefix": "",
+            "port": 80,
+            "preserve_client_ip": null,
+            "protocol": "HTTP",
+            "protocol_version": "HTTP1",
+            "proxy_protocol_v2": false,
+            "slow_start": 0,
+            "stickiness": [
+              {
+                "cookie_duration": 86400,
+                "cookie_name": "",
+                "enabled": false,
+                "type": "lb_cookie"
+              }
+            ],
+            "tags": null,
+            "tags_all": {},
+            "target_failover": [
+              {
+                "on_deregistration": null,
+                "on_unhealthy": null
+              }
+            ],
+            "target_health_state": [
+              {
+                "enable_unhealthy_connection_termination": null
+              }
+            ],
+            "target_type": "instance",
+            "vpc_id": "vpc-07cff81271235a573"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.networking.aws_eip.nat",
+            "module.networking.aws_internet_gateway.igw",
+            "module.networking.aws_nat_gateway.nat",
+            "module.networking.aws_route_table.private",
+            "module.networking.aws_route_table.public",
+            "module.networking.aws_route_table_association.private",
+            "module.networking.aws_route_table_association.public",
+            "module.networking.aws_subnet.private",
+            "module.networking.aws_subnet.public",
+            "module.networking.aws_vpc.main"
+          ]
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}
+
+{
+  "version": 4,
+  "terraform_version": "1.7.3",
+  "serial": 116,
+  "lineage": "0b9de918-9e77-6246-75e1-a1368d897b0d",
+  "outputs": {},
+  "resources": [],
+  "check_results": null
+}
+
+# This file can declare variables that will be passed to modules.
+variable "region" {
+  type        = string
+  description = "The AWS region to deploy resources into."
+  default     = "ca-central-1"
+}
+
+{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"compute","Source":"./modules/compute","Dir":"modules/compute"},{"Key":"database","Source":"./modules/database","Dir":"modules/database"},{"Key":"networking","Source":"./modules/networking","Dir":"modules/networking"},{"Key":"web_load_balancer","Source":"./modules/aws-load-balancer","Dir":"modules/aws-load-balancer"}]}
+import os
+
+def concatenate_files(start_path, output_file_path):
+    with open(output_file_path, 'w') as output_file:
+        for dirpath, dirnames, filenames in os.walk(start_path):
+            for filename in filenames:
+                filepath = os.path.join(dirpath, filename)
+                # Skip if it is symbolic link
+                if not os.path.islink(filepath):
+                    try:
+                        with open(filepath, 'r') as file:
+                            content = file.read()
+                            output_file.write(content + "\n")  # Add a newline after each file's content
+                            print(f"Added content from {filepath}")
+                    except Exception as e:
+                        print(f"Error reading {filepath}: {e}")
+
+# Use a raw string for Windows path
+directory_path = r'C:\Users\saman\OneDrive\Desktop\study+projects\NCPL\projectcs\Terra3tierArc'
+# directory_path = r'C:\Users\saman\OneDrive\Desktop\study+projects\NCPL\projectcs\Microservice-Kubernties\eks\Blogplatform\kube'
+output_file_path = 'combined_output.txt'
+
+concatenate_files(directory_path, output_file_path)
+print(f"All file contents have been combined into {output_file_path}.")
+
+terraform {
+  required_providers {
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+  }
+}
+
+resource "aws_lb" "this" {
+  name               = var.name
+  internal           = var.internal
+  load_balancer_type = "application"
+  security_groups    = var.security_groups
+  subnets            = var.subnets
+
+  tags = {
+    Name = var.name
+  }
+}
+
+resource "aws_lb_target_group" "web" {
+  name     = "web-targets"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = var.vpc_id
+
+  health_check {
+    enabled             = true
+    path                = "/"  # Change to a path that your application will reliably serve with a 200 OK when healthy.
+    protocol            = "HTTP"
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    matcher             = "200"
+  }
+}
+
+resource "aws_lb_listener" "http_listener" {
+  load_balancer_arn = aws_lb.this.arn  # Corrected from aws_lb.web.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
+  }
+}
+
+
+# resource "aws_lb_target_group_attachment" "web" {
+#   target_group_arn = aws_lb_target_group.web.arn
+#   target_id        = var.web_instance_id # Passed from the main configuration
+#   port             = 80
+# }
+
+
+
+resource "aws_lb_listener" "https_listener" {
+  load_balancer_arn = aws_lb.this.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"  # Example policy, choose based on your compliance needs
+  certificate_arn   = var.ssl_certificate_arn      # Reference the imported certificate
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
+  }
+}
+
+output "lb_dns_name" {
+  description = "The DNS name of the load balancer"
+  value       = aws_lb.this.dns_name
+}
+
+output "lb_arn" {
+  description = "The ARN of the load balancer"
+  value       = aws_lb.this.arn
+}
+
+
+output "target_group_arns" {
+  description = "The ARN of the target group"
+  value       = aws_lb_target_group.web.arn
+}
+
+variable "name" {
+  description = "The name of the load balancer"
+  type        = string
+}
+
+variable "subnets" {
+  description = "A list of subnet IDs to attach to the Load Balancer"
+  type        = list(string)
+}
+
+variable "security_groups" {
+  description = "A list of security group IDs to assign to the Load Balancer"
+  type        = list(string)
+}
+
+variable "internal" {
+  description = "Indicates if the LB should be internal"
+  type        = bool
+  default     = false
+}
+
+variable "vpc_id" {
+  description = "The VPC ID where the load balancer and other resources will be created"
+  type        = string
+}
+
+variable "web_instance_id" {
+  description = "The ID of the web instance to attach to the target group"
+  type        = string
+}
+
+variable "ssl_certificate_arn" {
+  description = "The ARN of the SSL certificate in AWS ACM"
+  default     = "arn:aws:acm:ca-central-1:247867391235:certificate/556383a0-575d-41a4-a0b8-d2a38f5b8108"
+}
+
+# Launch Configuration for Web Tier
+resource "aws_launch_configuration" "web_server" {
+  name_prefix          = "web-server-"
+  image_id             = var.image_id
+  instance_type        = var.instance_type
+  key_name             = var.key_name
+  security_groups      = [aws_security_group.web.id]
+
+  user_data            = <<-EOF
+                                #!/bin/bash
+                                sudo yum -y update
+                                sudo yum -y install httpd
+                                sudo systemctl start httpd.service
+                                sudo systemctl enable httpd.service
+                                sudo systemctl status httpd
+                                sudo journalctl -u httpd
+                                cat /var/log/httpd/access_log
+                                cat /var/log/httpd/error_log
+                                echo '
+                                <!DOCTYPE html>
+                                <html lang="en">
+                                  <head>
+                                    <meta charset="utf-8" />
+                                    <meta name="viewport" content="width=device-width, initial-scale=1" />
+                                    <title>A Basic HTML5 Template</title>
+                                    <link rel="preconnect" href="https://fonts.googleapis.com" />
+                                    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+                                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet" />
+                                    <link rel="stylesheet" href="css/styles.css?v=1.0" />
+                                  </head>
+                                  <body>
+                                    <div class="wrapper">
+                                      <div class="container">
+                                        <h1>Welcome! An Apache web server has been started successfully.</h1>
+                                        <h2>Samander Abayneh</h2>
+                                      </div>
+                                    </div>
+                                  </body>
+                                </html>
+                                ' > /var/www/html/index.html
+                                EOF
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Auto Scaling Group for Web Tier
+resource "aws_autoscaling_group" "web" {
+  launch_configuration = aws_launch_configuration.web_server.id
+  min_size             = var.min_size
+  max_size             = var.max_size
+  vpc_zone_identifier  = var.subnets
+  target_group_arns    = [var.target_group_arn]
+
+  tag {
+    key                 = "Name"
+    value               = "web-instance"
+    propagate_at_launch = true
+  }
+}
+
+# Example Security Group for Web Tier
+resource "aws_security_group" "web" {
+  name        = "web-sg"
+  description = "Security group for web tier allowing HTTP and SSH"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+output "asg_name" {
+  value       = aws_autoscaling_group.web.name
+  description = "The name of the Auto Scaling Group created."
+}
+
+
+output "web_security_group_id" {
+  description = "ID of the Web Security Group"
+  value       = aws_security_group.web.id
+}
+
+output "instance_id" {
+  value = aws_launch_configuration.web_server.id
+}
+
+output "autoscaling_group_name" {
+  value = aws_autoscaling_group.web.name
+}
+
+variable "subnets" {
+  type        = list(string)
+  description = "A list of subnet IDs to associate with the Auto Scaling Group."
+}
+
+variable "image_id" {
+  type        = string
+  description = "The AMI ID to use for the EC2 instances."
+}
+
+variable "instance_type" {
+  type        = string
+  description = "The type of EC2 instance to use."
+}
+
+variable "min_size" {
+  type        = number
+  description = "Minimum size of the Auto Scaling Group."
+}
+
+variable "max_size" {
+  type        = number
+  description = "Maximum size of the Auto Scaling Group."
+}
+
+variable "key_name" {
+  type        = string
+  description = "The key name to use for the EC2 instances."
+}
+
+
+variable "vpc_id" {
+  type        = string
+  description = "vpc id"
+}
+
+
+variable "target_group_arn" {
+  description = "ARN of the target group to which the ASG instances should be attached"
+}
+
+openssl genrsa -out myprivatekey.pem 2048
+
+# Generate a self-signed certificate with a placeholder domain using double quotes
+openssl req -new -x509 -sha256 -key myprivatekey.pem -out mycertificate.pem -days 3650 -subj "//CN=local.test"
+
+
+aws acm import-certificate --certificate fileb://mycertificate.pem \
+                           --private-key fileb://myprivatekey.pem
+
+resource "aws_db_instance" "default" {
+  allocated_storage    = 20
+  storage_type         = "gp2"
+  engine               = "mysql"
+  engine_version       = "8.0.36"  // Updated to the latest version available
+  instance_class       = "db.m6g.large"
+  username             = var.db_user
+  password             = var.db_password
+  parameter_group_name = "default.mysql8.0"
+  db_subnet_group_name = aws_db_subnet_group.default.name
+  vpc_security_group_ids = [aws_security_group.db.id]
+  skip_final_snapshot = true
+
+  tags = {
+    Name = "MyDBInstance"
+  }
+}
+
+resource "aws_db_subnet_group" "default" {
+  name       = "my-db-subnet-group"
+  subnet_ids = var.subnet_ids
+
+  tags = {
+    Name = "My DB subnet group"
+  }
+}
+
+resource "aws_security_group" "db" {
+  vpc_id = var.vpc_id
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+  }
+}
+
+output "db_instance_endpoint" {
+  value       = aws_db_instance.default.address
+  description = "The endpoint of the RDS database instance."
+}
+
+variable "db_instance_type" {
+  type        = string
+  description = "The instance type of the RDS instance."
+}
+
+variable "db_name" {
+  type        = string
+  description = "The name of the database."
+  default     = "mydb"
+}
+
+variable "db_user" {
+  type        = string
+  description = "The username for the database."
+}
+
+variable "db_password" {
+  type        = string
+  description = "The password for the database."
+}
+
+variable "subnet_ids" {
+  type        = list(string)
+  description = "A list of subnet IDs for the DB subnet group."
+}
+
+
+variable "vpc_id" {
+  type        = string
+  description = "vpc id"
+}
+
+resource "aws_vpc" "main" {
+  cidr_block = var.cidr_block
+
+  tags = {
+    Name = "Main VPC"
+  }
+}
+
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "Main Internet Gateway"
+  }
+}
+
+resource "aws_subnet" "public" {
+  count = length(var.public_subnet_cidrs)
+
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.public_subnet_cidrs[count.index]
+  availability_zone = element(var.azs, count.index)
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "Public-${count.index}"
+  }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block   = "0.0.0.0/0"
+    gateway_id   = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "Public Route Table"
+  }
+}
+
+resource "aws_route_table_association" "public" {
+  count = length(var.public_subnet_cidrs)
+
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_subnet" "private" {
+  count = length(var.private_subnet_cidrs)
+
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.private_subnet_cidrs[count.index]
+  availability_zone = element(var.azs, count.index)
+
+  tags = {
+    Name = "Private-${count.index}"
+  }
+}
+
+# Optional: NAT Gateway for private subnets
+resource "aws_eip" "nat" {
+  domain = "vpc"
+}
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name = "Main NAT Gateway"
+  }
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block    = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags = {
+    Name = "Private Route Table"
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  count = length(var.private_subnet_cidrs)
+
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
+output "vpc_id" {
+  value       = aws_vpc.main.id
+  description = "The ID of the VPC created."
+}
+
+output "public_subnets_ids" {
+  value       = aws_subnet.public.*.id
+  description = "The IDs of the public subnets created."
+}
+
+output "private_subnets_ids" {
+  value       = aws_subnet.private.*.id
+  description = "The IDs of the private subnets created."
+}
+
+variable "cidr_block" {
+  type        = string
+  description = "The CIDR block for the VPC."
+}
+
+variable "public_subnet_cidrs" {
+  type        = list(string)
+  description = "A list of CIDR blocks for the public subnets."
+}
+
+variable "private_subnet_cidrs" {
+  type        = list(string)
+  description = "A list of CIDR blocks for the private subnets."
+}
+
+variable "azs" {
+  type        = list(string)
+  description = "A list of availability zones in which to create subnets."
+}
+

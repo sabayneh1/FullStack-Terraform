@@ -1,0 +1,19 @@
+
+
+
+
+
+
+
+
+
+
+
+
+mysql -h terraform-20240423145209106400000007.cbm66cuqeddm.ca-central-1.rds.amazonaws.com -u admin -p
+
+sudo yum install mariadb-server
+sudo systemctl start mariadb
+sudo mysql_secure_installation
+
+SHOW DATABASES;
